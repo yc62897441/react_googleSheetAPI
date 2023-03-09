@@ -7,10 +7,10 @@ import PageTitleWrapper from './miniComponents/PageTitleWrapper.jsx'
 import { Button1 } from './miniComponents/Buttons.jsx'
 
 // 專案 helpers
-import { calculateFetchRowIndex, calculateDay } from '../utils/helpers.js'
+import { calculateDay } from '../utils/helpers.js'
 
 // 讀寫 google sheet 的 API，使用 app script
-import { getData } from '../utils/api'
+import { getData, startFetchRowIndex } from '../utils/api'
 
 // material-ui 的 components
 import AppBar from '@mui/material/AppBar'
@@ -102,42 +102,51 @@ const DrawGroup = (
 )
 
 const TableDiv = styled.div`
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-gap: 15px 10px;
     padding: 10px;
     box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
     overflow-x: scroll;
 `
 
-const TableHeadDiv = styled.div``
-
-const TableBodyDiv = styled.div``
-
-const TableRowDiv = styled.div`
-    display: grid;
-    grid-template-columns: ${({ len }) => (len ? `repeat(${len}, 1fr)` : `repeat(${len}, 1fr)`)};
-    grid-gap: 0 5px;
-    align-items: flex-start;
-    flex-wrap: nowrap;
-`
-
 const TableCellDiv = styled.div`
-    width: 200px;
+    width: 100%;
+    min-width: 200px;
     font-size: 20px;
     border: 1px solid transparent;
-    padding: 0 2px;
+    /* padding: 0 2px; */
 
     ${({ flexColumn }) =>
         flexColumn &&
         css`
+            position: relative;
             display: flex;
             flex-direction: column;
-            height: 100%;
-            min-height: 100px;
+
+            /* 適合只顯示每則預約(event)的起訖時間的版面高度 */
+            height: 175px;
+            /* 適合顯示每則預約(event)的完整資訊的版面高度 */
+            /* height: 100%;
+            min-height: 150px;
+            max-height: 300px; */
+           
             border: 1px solid #dddddd;
             font-size: 16px;
             cursor: pointer;
-
+            overflow-y: hidden;
             :hover {
                 border: 1px solid #999999;
+            }
+
+            :after {
+                position: absolute;
+                top: 0;
+                display: block;
+                content: '';
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8));
             }
         `}
 `
@@ -149,8 +158,15 @@ const TableCellSectionDiv = styled.div`
     align-items: flex-start;
     width: 100%;
     padding: 5px;
-    border: 1px solid #dddddd;
-    margin: 2px 0;
+    border-bottom: 1px solid #dddddd;
+    /* margin: 2px 0; */
+
+    ${({ isDate }) =>
+        isDate &&
+        css`
+            font-size: 18px;
+            background-color: #f6f6f6;
+        `}
 `
 
 const IsUpdatingModal = styled.div`
@@ -376,45 +392,38 @@ export default function ResponsiveDrawer() {
 
                 {data.values.length > 0 && (
                     <TableDiv>
-                        <TableHeadDiv>
-                            <TableRowDiv len={data.values.length}>
-                                {data.values.map((element, index) => (
-                                    <TableCellDiv key={index}>
-                                        {element[0]} {`(${calculateDay(element[0])})`}
-                                    </TableCellDiv>
-                                ))}
-                            </TableRowDiv>
-                        </TableHeadDiv>
-
-                        <TableBodyDiv>
-                            <TableRowDiv len={data.values.length}>
-                                {data.values.map((eachDay, index) => (
-                                    <Fragment key={index}>
-                                        <TableCellDiv className="openModal" flexColumn={true} onClick={() => handleShowModal(index)}>
-                                            {eachDay.length > 0 &&
-                                                eachDay.map((event, index) => {
-                                                    if (index > 0 && Number(event.room) === showRoom && event.existed.trim() === 'true') {
-                                                        return (
-                                                            <TableCellSectionDiv className="openModal" key={index}>
-                                                                <div className="openModal">{event.startTime ? `開始時段：${event.startTime}` : ''}</div>
-                                                                <div className="openModal">{event.startTime ? `結束時段：${event.endTime}` : ''}</div>
-                                                                <div className="openModal">{event.startTime ? `申請者：${event.user}` : ''}</div>
-                                                                <div className="openModal">{event.startTime ? `用途：${event.purpose}` : ''}</div>
-                                                                <div className="openModal">{event.startTime ? `聯絡電話：${event.tel}` : ''}</div>
-                                                                <div className="openModal">{event.startTime ? `會議室：${event.room}` : ''}</div>
-                                                                <div className="openModal">{event.startTime ? `已預約：${event.existed}` : ''}</div>
-                                                            </TableCellSectionDiv>
-                                                        )
-                                                    } else {
-                                                        return ''
-                                                    }
-                                                })}
-                                        </TableCellDiv>
-                                        <ModalContainer className="ModalContainer" eachDay={eachDay} index={index} date={eachDay[0]} isShow={index === show} setShowModal={setShowModal} showRoom={showRoom} excelRowIndex={calculateFetchRowIndex() + index} setIsUpdating={setIsUpdating}></ModalContainer>
-                                    </Fragment>
-                                ))}
-                            </TableRowDiv>
-                        </TableBodyDiv>
+                        {data.values.map((eachDay, index) => (
+                            <Fragment key={index}>
+                                <TableCellDiv className="openModal" flexColumn={true} onClick={() => handleShowModal(index)}>
+                                    {eachDay.length > 0 &&
+                                        eachDay.map((event, index) => {
+                                            if (index === 0) {
+                                                return (
+                                                    <TableCellSectionDiv className="openModal" key={index} isDate={true}>
+                                                        <div className="openModal">
+                                                            {event} {`(${calculateDay(event)})`}
+                                                        </div>
+                                                    </TableCellSectionDiv>
+                                                )
+                                            } else if (index > 0 && Number(event.room) === showRoom && event.existed.trim() === 'true') {
+                                                return (
+                                                    <TableCellSectionDiv className="openModal" key={index}>
+                                                        <div className="openModal">{`● ${event.startTime} - ${event.endTime}`}</div>
+                                                        {/* <div className="openModal">{event.startTime ? `開始時段：${event.startTime}` : ''}</div>
+                                                        <div className="openModal">{event.startTime ? `結束時段：${event.endTime}` : ''}</div>
+                                                        <div className="openModal">{event.startTime ? `申請者：${event.user}` : ''}</div>
+                                                        <div className="openModal">{event.startTime ? `用途：${event.purpose}` : ''}</div>
+                                                        <div className="openModal">{event.tel ? `聯絡電話：${event.tel}` : `聯絡電話：`}</div>
+                                                        <div className="openModal">{event.startTime ? `會議室：${event.room}` : ''}</div> */}
+                                                        {/* <div className="openModal">{event.startTime ? `已預約：${event.existed}` : ''}</div> */}
+                                                    </TableCellSectionDiv>
+                                                )
+                                            }
+                                        })}
+                                </TableCellDiv>
+                                <ModalContainer className="ModalContainer" eachDay={eachDay} index={index} date={eachDay[0]} isShow={index === show} setShowModal={setShowModal} showRoom={showRoom} excelRowIndex={startFetchRowIndex + index} setIsUpdating={setIsUpdating}></ModalContainer>
+                            </Fragment>
+                        ))}
                     </TableDiv>
                 )}
             </Box>

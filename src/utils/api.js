@@ -1,13 +1,15 @@
 import axios from 'axios'
-
+import { sheetUrl, spreadsheetId, tab_name, APIkey, AppScriptURL } from '../conf/index'
 import { calculateFetchRowIndex } from './helpers'
 
-const spreadsheetId = '1eUvRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-const tab_name = '工作表1' // 工作表1
-const APIkey = 'AIzaSxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 // 計算當日日期在後端 excel 的 row index，以及未來近 14 天的 row index
-const startFetchRowIndex = calculateFetchRowIndex()
-const endFetchRowIndex = startFetchRowIndex + 13
+// const startFetchRowIndex = calculateFetchRowIndex()
+// const endFetchRowIndex = startFetchRowIndex + 13
+
+// 計算當周起始日之日期在後端 excel 的 row index，以及未來近 28 天的 row index 
+// 每周的起始日(星期日)在後端 excel 的 row index 為 4、11、18...，所以要求出當周的起始日的 row index，先把 Math.floor((當日的 row index - 4) / 7) 求出第幾周(0、1、2...)，之後再把結果(0、1、2...) * 7 + 4 求出該周的起始日的 row index
+const startFetchRowIndex = Math.floor((calculateFetchRowIndex() - 4) / 7) * 7 + 4
+const endFetchRowIndex = startFetchRowIndex + 27
 const fetchRowRange = `!${startFetchRowIndex}:${endFetchRowIndex}`
 
 // 選取資料表範圍說明 「Google Sheets API Overview」→「Cell」→「A1 notation」或「R1C1 notation」
@@ -23,16 +25,16 @@ async function getData() {
 
 async function postData(data) {
     try {
-        const url = 'https://script.google.com/macros/s/AKfycxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/exec'
         const parameter = {
+            type: data.type,
             postInfo: data.postInfo,
             columnAlphabet: data.columnAlphabet,
             rowIndex: data.rowIndex,
-            sheetUrl: 'https://docs.google.com/spreadsheets/d/1eUvRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/edit#gid=0',
-            sheetTag: '工作表1',
+            sheetUrl: sheetUrl,
+            sheetTag: tab_name,
         }
 
-        const result = await axios.get(url, { params: parameter })
+        const result = await axios.get(AppScriptURL, { params: parameter })
         return result
         // $.get(url, parameter).then((response) => {
         //     console.log('response', response)
@@ -42,7 +44,7 @@ async function postData(data) {
     }
 }
 
-export { getData, postData }
+export { getData, postData, startFetchRowIndex }
 
 // 寫給純前端，讓 Google Sheets 當你的後端完成寫入功能
 // https://medium.com/unalai/%E5%AF%AB%E7%B5%A6%E7%B4%94%E5%89%8D%E7%AB%AF-%E8%AE%93-google-sheets-%E7%95%B6%E4%BD%A0%E7%9A%84%E5%BE%8C%E7%AB%AF%E5%AE%8C%E6%88%90%E5%AF%AB%E5%85%A5%E5%8A%9F%E8%83%BD-715799e5e013

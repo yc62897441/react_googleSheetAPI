@@ -1,15 +1,12 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import HomePage from './containers/HomePage.jsx'
+// import ResponsiveDrawer from '../components/ResponsiveDrawer.jsx'
+import ResponsiveDrawer from '../components/ResponsiveDrawerWeekBaseCalendar.jsx'
 
-function App() {
+function HomePage() {
     return (
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/" element={<HomePage />} />
-                </Routes>
-            </BrowserRouter>
+        <div>
+            <ResponsiveDrawer></ResponsiveDrawer>
+        </div>
     )
 }
 
-export default App
+export default HomePage
